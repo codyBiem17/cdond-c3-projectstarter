@@ -192,7 +192,7 @@ jobs:
             apk add --update ansible
             apk add --update tar
             apk add --update gzip
-            apk add --update awscli
+            pip3 install awscli
       - run:
           name: Configure server
           command: |
@@ -220,8 +220,8 @@ workflows:
           filters:
             branches:
               only: [master]
-      # - configure-infrastructure:
-      #     requires: [deploy-infrastructure]
+      - configure-infrastructure:
+          requires: [deploy-infrastructure]
       # - run-migrations:
       #     requires: [configure-infrastructure]
       # - deploy-frontend:
