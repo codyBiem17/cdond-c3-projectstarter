@@ -28,7 +28,7 @@ commands:
           when: on_fail
           command: |
             # Curl command here to see if there was a successful migration associated with the workflow id, store result in SUCCESS variable
-            SUCCESS=$(curl https://2V2LARurfoxubtNhrfmUzZ/migration_<< parameters.workflow_ID >>)
+            SUCCESS=$(curl https://G9jKC784Hc5e1UPJdvgbkA/migration_<< parameters.workflow_ID >>)
             if(( $SUCCESS==1 )); 
             then
               cd ~/project/backend
@@ -165,9 +165,12 @@ jobs:
       - run:
           name: Add back-end ip to ansible inventory
           command: |
-            aws ec2 describe-instances \
+            backend_ip=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=backend-${CIRCLE_WORKFLOW_ID:0:7}" \
             --query 'Reservations[*].Instances[*].PublicIpAddress' \
-            --output text >> inventory.txt
+            --output text)
+            echo "${backend_ip}" >> .circleci/ansible/inventory.txt
+            cat .circleci/ansible/inventory.txt
       - persist_to_workspace:
           root: ~/
           paths:
@@ -227,7 +230,7 @@ jobs:
               # Your code here
               if grep -q "has been executed successfully." ~/project/backend/migrations_dump.txt
                 then
-                  curl https://2V2LARurfoxubtNhrfmUzZ/migration_${CIRCLE_WORKFLOW_ID:0:7}  -d '1'
+                  curl https://G9jKC784Hc5e1UPJdvgbkA/migration_${CIRCLE_WORKFLOW_ID:0:7}  -d '1'
               fi
       # Here's where you will add some code to rollback on failure
         - destroy-environment:
@@ -321,7 +324,64 @@ jobs:
       - destroy-environment:
           workflow_ID: ${CIRCLE_WORKFLOW_ID:0:7}
       - revert-migrations:
-          workflow_ID: ${CIRCLE_WORKFLOW_ID:0:7}   
+          workflow_ID: ${CIRCLE_WORKFLOW_ID:0:7}
+
+  smoke-test:
+    docker:
+      # Lightweight Docker image
+      - image: python:3.7-alpine3.16 
+    steps:
+      # Checkout code from git
+      - checkout
+      - run:
+          name: Install dependencies
+          command: |
+            # your code here
+            apk add --update curl
+            apk add --update nodejs
+            apk add --update npm
+            pip3 install awscli
+      - run:
+          name: Get backend url
+          command: |
+            # your code here
+            export backend_ip=$(aws ec2 describe-instances \
+            --query 'Reservations[*].Instances[*].PublicIpAddress' \
+            --output text >> inventory.txt)
+            export API_URL="http://${backend_ip}:3030"
+            echo "${API_URL}" >> be-IP.txt
+            
+      - run:
+          name: Backend smoke test.
+          command: |
+            # your code here
+            # Fetch and prepare the BACKEND_IP env var
+            export API_URL="http://${backend_ip}:3030"
+            echo "${API_URL}"
+            if curl "${API_URL}/api/status" | grep "ok"
+            then
+                return 0
+            else
+                return 1
+            fi
+      - run:
+          name: Frontend smoke test.
+          command: |
+            # your code here
+            URL="http://udapeople-${CIRCLE_WORKFLOW_ID:0:7}.s3-website-us-east-1.amazonaws.com/#/employees"            
+            echo ${URL} 
+            if curl -s ${URL} | grep "Welcome"
+            then
+                # Change this to 0 after the job fails
+              return 1
+            else
+              return 1
+            fi
+      # Here's where you will add some code to rollback on failure
+      # - destroy-environment:
+      #     workflow_ID: ${CIRCLE_WORKFLOW_ID:0:7}
+      # - revert-migrations:
+      #     workflow_ID: ${CIRCLE_WORKFLOW_ID:0:7}     
 
 workflows:
   default:
@@ -349,8 +409,8 @@ workflows:
           requires: [run-migrations]
       - deploy-backend:
           requires: [run-migrations]
-      # - smoke-test:
-      #     requires: [deploy-backend, deploy-frontend]
+      - smoke-test:
+          requires: [deploy-backend, deploy-frontend]
       # - cloudfront-update:
       #     requires: [smoke-test]
       # - cleanup:
