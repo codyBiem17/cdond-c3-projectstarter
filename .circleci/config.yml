@@ -333,6 +333,9 @@ jobs:
     steps:
       # Checkout code from git
       - checkout
+      # attach workspace
+      - attach_workspace:
+          at: ~/
       - run:
           name: Install dependencies
           command: |
@@ -345,11 +348,11 @@ jobs:
           name: Get backend url
           command: |
             # your code here
-            export backend_ip=$(aws ec2 describe-instances \
+            backend_ip=$(aws ec2 describe-instances \
             --query 'Reservations[*].Instances[*].PublicIpAddress' \
-            --output text >> inventory.txt)
+            --output text)
             export API_URL="http://${backend_ip}:3030"
-            echo "${API_URL}" >> be-IP.txt
+            echo "${API_URL}" >> backend-IP.txt
             
       - run:
           name: Backend smoke test.
