@@ -1,0 +1,1 @@
+aws s3 rm s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --recursive
