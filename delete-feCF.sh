@@ -1,1 +1,1 @@
-aws cloudformation delete-stack --stack-name udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}
+aws cloudformation delete-stack --stack-name udapeople-frontend-46800ae
