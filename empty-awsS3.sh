@@ -1,1 +1,1 @@
-aws s3 rm s3://udapeople-c7bfdac --recursive
+aws s3 rm s3://udapeople-839e3a5 --recursive
